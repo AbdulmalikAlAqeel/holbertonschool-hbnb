@@ -36,6 +36,104 @@ classDiagram
     Business_Logic_Layer_Core --> Persistence_Layer_Data : Database Operations
 ```
 
+---
+
+## Task 1: Detailed Class Diagram — Business Logic Layer
+
+This class diagram details the four core entities of the Business Logic layer —
+`User`, `Place`, `Review`, and `Amenity` — including their attributes, methods, and
+relationships. A shared `BaseModel` provides the common `id` (UUID4) and audit
+timestamps (`created_at`, `updated_at`) required for every entity.
+
+```mermaid
+classDiagram
+    class BaseModel {
+        +String id
+        +DateTime created_at
+        +DateTime updated_at
+        +save() void
+        +update(data) void
+        +to_dict() dict
+    }
+
+    class User {
+        +String first_name
+        +String last_name
+        +String email
+        +String password
+        +Boolean is_admin
+        +register() User
+        +update_profile(data) void
+        +delete() void
+    }
+
+    class Place {
+        +String title
+        +String description
+        +Float price
+        +Float latitude
+        +Float longitude
+        +create() Place
+        +update(data) void
+        +delete() void
+        +list_places() List~Place~
+        +add_amenity(amenity) void
+    }
+
+    class Review {
+        +Integer rating
+        +String comment
+        +create() Review
+        +update(data) void
+        +delete() void
+        +list_by_place(place_id) List~Review~
+    }
+
+    class Amenity {
+        +String name
+        +String description
+        +create() Amenity
+        +update(data) void
+        +delete() void
+        +list_amenities() List~Amenity~
+    }
+
+    %% Inheritance: every entity shares id + audit timestamps
+    BaseModel <|-- User
+    BaseModel <|-- Place
+    BaseModel <|-- Review
+    BaseModel <|-- Amenity
+
+    %% Associations
+    User "1" --> "0..*" Place : owns
+    User "1" --> "0..*" Review : writes
+    Place "1" --> "0..*" Review : receives
+    Place "0..*" --> "0..*" Amenity : has
+```
+
+### Explanatory Notes — Class Diagram
+
+- **BaseModel:** Abstract parent that guarantees each object has a unique `id`
+  (UUID4) and the `created_at` / `updated_at` timestamps required for auditing. All
+  entities inherit from it.
+- **User:** Holds account data (`first_name`, `last_name`, `email`, `password`) and
+  an `is_admin` flag to distinguish administrators from regular users. Can register,
+  update its profile, and be deleted.
+- **Place:** Represents a property listing with `title`, `description`, `price`,
+  `latitude`, and `longitude`. Owned by one user and can hold many amenities.
+- **Review:** A `rating` and `comment` written by a user about a place.
+- **Amenity:** A feature (`name`, `description`) that can be linked to many places.
+
+**Relationships:**
+
+- **User → Place (1 to 0..\*):** An owner can own many places; each place belongs to
+  exactly one owner.
+- **User → Review (1 to 0..\*):** A user can write many reviews.
+- **Place → Review (1 to 0..\*):** A place can receive many reviews; each review
+  targets exactly one place.
+- **Place ↔ Amenity (0..\* to 0..\*):** Many-to-many — a place can have many
+  amenities, and an amenity can belong to many places.
+
 ## Task 2: Sequence Diagrams for API Calls
 
 ### 1. User Registration
