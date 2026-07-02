@@ -1,5 +1,8 @@
 # HBnB Architecture Documentation
 
+## Introduction
+This document provides a comprehensive overview of the HBnB application architecture. The system is designed following a monolithic three-layer architecture utilizing the Facade Pattern to decouple thepresentation, business logic, and data persistence layers.
+
 ## Task 0: High-Level Package Diagram
 
 The high-level package diagram illustrates the three-layer architecture of the HBnB application and the communication between these layers via the facade pattern.
@@ -140,6 +143,35 @@ sequenceDiagram
 ```
 
 This diagram shows how the application fetches a list of places. The API receives the search criteria, the Facade processes the request, and the repository retrieves matching places.
+
+### 1. User Registration (Success & Error Handling)
+
+sequenceDiagram
+    participant Client
+    participant API as Presentation_Layer_API
+    participant Facade as HBnBAPI_Facade
+    participant Repo as IRepository
+
+    Client->>API: POST /users
+    API->>API: Validate request data (e.g., email format)
+    
+    alt Data is Invalid
+        API-->>Client: 400 Bad Request (Validation Error)
+    else Data is Valid
+        API->>Facade: register_user(data)
+        Facade->>Repo: Check if email exists
+        
+        alt Email Already Registered
+            Repo-->>Facade: User exists
+            Facade-->>API: Error (Duplicate Email)
+            API-->>Client: 400 Bad Request (Email already taken)
+        else Email is Available
+            Facade->>Repo: save(user)
+            Repo-->>Facade: confirmation
+            Facade-->>API: created user
+            API-->>Client: 201 Created
+        end
+    end
 
 ## Explanatory Notes
 
