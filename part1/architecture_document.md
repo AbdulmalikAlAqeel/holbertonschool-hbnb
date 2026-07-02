@@ -84,6 +84,7 @@ sequenceDiagram
     Repo-->>Facade: place saved
     Facade-->>API: created place
     API-->>Client: 201 Created
+```
 
 This diagram shows how a new place is created. The request goes from the Presentation Layer to the Facade, then the place object is created and stored in the Persistence Layer.
 
