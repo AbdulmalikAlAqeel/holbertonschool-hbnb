@@ -1,159 +1,160 @@
 from app.persistence.repository import InMemoryRepository
 
-
 from app.models import User, Amenity, Place, Review
 
+
 class HBnBFacade:
-    """
-    Facade class that coordinates the communication between the 
-    Presentation (API) layer and the Business Logic / Persistence layers.
-    """
+    """Facade coordinating the API, business logic and persistence layers."""
+
     def __init__(self):
-        # Initialize in-memory repositories for each domain model
         self.user_repo = InMemoryRepository()
         self.amenity_repo = InMemoryRepository()
         self.place_repo = InMemoryRepository()
         self.review_repo = InMemoryRepository()
 
-    # =========================================================================
-    # USER OPERATIONS
-    # =========================================================================
-
+    # ---------------- USER ----------------
     def create_user(self, user_data):
-        """
-        Creates a new user and saves them in the repository.
-        """
         user = User(**user_data)
         self.user_repo.add(user)
         return user
 
     def get_user(self, user_id):
-        """
-        Retrieves a single user by their unique ID.
-        """
         return self.user_repo.get(user_id)
 
     def get_user_by_email(self, email):
-        """
-        Retrieves a user by their email address. Useful for duplicate email validation.
-        """
-        all_users = self.user_repo.get_all()
-        for user in all_users:
+        for user in self.user_repo.get_all():
             if user.email == email:
                 return user
         return None
 
     def get_all_users(self):
-        """
-        Retrieves all users stored in the system.
-        """
         return self.user_repo.get_all()
 
     def update_user(self, user_id, user_data):
-        """
-        Updates a user's details based on their ID and new data.
-        """
         return self.user_repo.update(user_id, user_data)
 
-    # =========================================================================
-    # AMENITY OPERATIONS
-    # =========================================================================
-
+    # ---------------- AMENITY ----------------
     def create_amenity(self, amenity_data):
-        """
-        Creates a new amenity (e.g., WiFi, Pool) and saves it in the repository.
-        """
         amenity = Amenity(**amenity_data)
         self.amenity_repo.add(amenity)
         return amenity
 
     def get_amenity(self, amenity_id):
-        """
-        Retrieves an amenity by its unique ID.
-        """
         return self.amenity_repo.get(amenity_id)
 
     def get_all_amenities(self):
-        """
-        Retrieves all amenities stored in the system.
-        """
         return self.amenity_repo.get_all()
 
     def update_amenity(self, amenity_id, amenity_data):
-        """
-        Updates an amenity's details.
-        """
         return self.amenity_repo.update(amenity_id, amenity_data)
 
-    # =========================================================================
-    # PLACE OPERATIONS
-    # =========================================================================
-
+    # ---------------- PLACE (Task 4) ----------------
     def create_place(self, place_data):
-        """
-        Creates a new place and saves it in the repository.
-        """
-        place = Place(**place_data)
+        owner_id = place_data.get('owner_id')
+        owner = self.user_repo.get(owner_id)
+        if not owner:
+            raise ValueError("Owner not found")
+
+        amenities_ids = place_data.get('amenities', []) or []
+
+        place = Place(
+            title=place_data.get('title'),
+            description=place_data.get('description', ''),
+            price=place_data.get('price'),
+            latitude=place_data.get('latitude'),
+            longitude=place_data.get('longitude'),
+            owner_id=owner_id
+        )
+
+        for amenity_id in amenities_ids:
+            if not self.amenity_repo.get(amenity_id):
+                raise ValueError("Amenity {} not found".format(amenity_id))
+            place.add_amenity(amenity_id)
+
         self.place_repo.add(place)
         return place
 
     def get_place(self, place_id):
-        """
-        Retrieves a place by its unique ID.
-        """
         return self.place_repo.get(place_id)
 
     def get_all_places(self):
-        """
-        Retrieves all places stored in the system.
-        """
         return self.place_repo.get_all()
 
     def update_place(self, place_id, place_data):
-        """
-        Updates a place's details.
-        """
-        return self.place_repo.update(place_id, place_data)
+        place = self.place_repo.get(place_id)
+        if not place:
+            return None
 
-    # =========================================================================
-    # REVIEW OPERATIONS
-    # =========================================================================
+        if 'owner_id' in place_data and not self.user_repo.get(place_data['owner_id']):
+            raise ValueError("Owner not found")
 
+        if 'amenities' in place_data:
+            amenities_ids = place_data.pop('amenities') or []
+            for amenity_id in amenities_ids:
+                if not self.amenity_repo.get(amenity_id):
+                    raise ValueError("Amenity {} not found".format(amenity_id))
+            place.amenities = amenities_ids
+
+        if 'title' in place_data:
+            Place.validate_title(place_data['title'])
+        if 'price' in place_data:
+            Place.validate_price(place_data['price'])
+        if 'latitude' in place_data:
+            Place.validate_latitude(place_data['latitude'])
+        if 'longitude' in place_data:
+            Place.validate_longitude(place_data['longitude'])
+
+        place.update(place_data)
+        return place
+
+    # ---------------- REVIEW (Task 5) ----------------
     def create_review(self, review_data):
-        """
-        Creates a new review for a place and saves it.
-        """
-        review = Review(**review_data)
+        user = self.user_repo.get(review_data.get('user_id'))
+        if not user:
+            raise ValueError("User not found")
+
+        place = self.place_repo.get(review_data.get('place_id'))
+        if not place:
+            raise ValueError("Place not found")
+
+        review = Review(
+            text=review_data.get('text'),
+            rating=review_data.get('rating'),
+            place_id=review_data.get('place_id'),
+            user_id=review_data.get('user_id')
+        )
         self.review_repo.add(review)
+        place.add_review(review.id)
         return review
 
     def get_review(self, review_id):
-        """
-        Retrieves a review by its unique ID.
-        """
         return self.review_repo.get(review_id)
 
     def get_all_reviews(self):
-        """
-        Retrieves all reviews stored in the system.
-        """
         return self.review_repo.get_all()
 
     def get_reviews_by_place(self, place_id):
-        """
-        Retrieves all reviews submitted for a specific place.
-        """
-        all_reviews = self.review_repo.get_all()
-        return [review for review in all_reviews if review.place_id == place_id]
+        place = self.place_repo.get(place_id)
+        if not place:
+            return None
+        return [r for r in self.review_repo.get_all() if r.place_id == place_id]
 
     def update_review(self, review_id, review_data):
-        """
-        Updates an existing review's details.
-        """
-        return self.review_repo.update(review_id, review_data)
+        review = self.review_repo.get(review_id)
+        if not review:
+            return None
+        if 'rating' in review_data:
+            Review.validate_rating(review_data['rating'])
+        if 'text' in review_data and not review_data['text']:
+            raise ValueError("Review text cannot be empty.")
+        review.update(review_data)
+        return review
 
     def delete_review(self, review_id):
-        """
-        Deletes a review from the system.
-        """
+        review = self.review_repo.get(review_id)
+        if not review:
+            return False
+        place = self.place_repo.get(review.place_id)
+        if place and review_id in place.reviews:
+            place.reviews.remove(review_id)
         return self.review_repo.delete(review_id)
