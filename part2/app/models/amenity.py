@@ -1,4 +1,4 @@
-from models.base_model import BaseModel
+from app.models.base import BaseModel
 
 class Amenity(BaseModel):
     """Represents an amenity available at a Place (e.g., Wi-Fi, Pool)."""

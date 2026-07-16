@@ -1,5 +1,5 @@
 import re
-from models.base_model import BaseModel
+from app.models.base import BaseModel
 
 class User(BaseModel):
     """Represents a user profile in the system."""

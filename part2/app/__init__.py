@@ -34,8 +34,8 @@ def create_app(config_class=None):
     # and register your namespaces here to expose them to the Swagger UI.
     #
     # Example:
-    # from app.api.v1.users import api as users_ns
-    # api.add_namespace(users_ns, path='/api/v1/users')
+    from app.api.v1.users import api as users_ns
+    api.add_namespace(users_ns, path='/api/v1/users')
     #
     # from app.api.v1.amenities import api as amenities_ns
     # api.add_namespace(amenities_ns, path='/api/v1/amenities')

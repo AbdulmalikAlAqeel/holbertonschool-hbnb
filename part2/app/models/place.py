@@ -1,4 +1,4 @@
-from models.base_model import BaseModel
+from app.models.base import BaseModel
 
 class Place(BaseModel):
     """Represents a rental listing/place in the system."""

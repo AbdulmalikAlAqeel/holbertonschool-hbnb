@@ -1,4 +1,4 @@
-from models.base_model import BaseModel
+from app.models.base import BaseModel
 
 class Review(BaseModel):
     """Represents a review left by a user for a specific place."""
