@@ -1,5 +1,4 @@
 from app.persistence.repository import InMemoryRepository
-
 from app.models import User, Amenity, Place, Review
 
 
@@ -13,7 +12,12 @@ class HBnBFacade:
         self.review_repo = InMemoryRepository()
 
     # ---------------- USER ----------------
+
     def create_user(self, user_data):
+        email = user_data.get("email")
+        if self.get_user_by_email(email):
+            raise ValueError("Email already registered")
+
         user = User(**user_data)
         self.user_repo.add(user)
         return user
@@ -22,18 +26,27 @@ class HBnBFacade:
         return self.user_repo.get(user_id)
 
     def get_user_by_email(self, email):
-        for user in self.user_repo.get_all():
-            if user.email == email:
-                return user
-        return None
+        return self.user_repo.get_by_attribute("email", email)
 
     def get_all_users(self):
         return self.user_repo.get_all()
 
     def update_user(self, user_id, user_data):
-        return self.user_repo.update(user_id, user_data)
+        user = self.get_user(user_id)
+        if not user:
+            return None
+
+        new_email = user_data.get("email")
+        existing = self.get_user_by_email(new_email)
+
+        if existing and existing.id != user_id:
+            raise ValueError("Email already registered")
+
+        user.update(user_data)
+        return user
 
     # ---------------- AMENITY ----------------
+
     def create_amenity(self, amenity_data):
         amenity = Amenity(**amenity_data)
         self.amenity_repo.add(amenity)
@@ -46,30 +59,36 @@ class HBnBFacade:
         return self.amenity_repo.get_all()
 
     def update_amenity(self, amenity_id, amenity_data):
-        return self.amenity_repo.update(amenity_id, amenity_data)
+        amenity = self.get_amenity(amenity_id)
+        if not amenity:
+            return None
 
-    # ---------------- PLACE (Task 4) ----------------
+        amenity.update(amenity_data)
+        return amenity
+
+    # ---------------- PLACE ----------------
+
     def create_place(self, place_data):
-        owner_id = place_data.get('owner_id')
-        owner = self.user_repo.get(owner_id)
+        owner = self.get_user(place_data.get("owner_id"))
         if not owner:
             raise ValueError("Owner not found")
 
-        amenities_ids = place_data.get('amenities', []) or []
-
         place = Place(
-            title=place_data.get('title'),
-            description=place_data.get('description', ''),
-            price=place_data.get('price'),
-            latitude=place_data.get('latitude'),
-            longitude=place_data.get('longitude'),
-            owner_id=owner_id
+            title=place_data.get("title"),
+            description=place_data.get("description"),
+            price=place_data.get("price"),
+            latitude=place_data.get("latitude"),
+            longitude=place_data.get("longitude"),
+            owner=owner
         )
 
-        for amenity_id in amenities_ids:
-            if not self.amenity_repo.get(amenity_id):
-                raise ValueError("Amenity {} not found".format(amenity_id))
-            place.add_amenity(amenity_id)
+        amenity_ids = place_data.get("amenities", []) or []
+
+        for amenity_id in amenity_ids:
+            amenity = self.get_amenity(amenity_id)
+            if not amenity:
+                raise ValueError("Amenity not found")
+            place.add_amenity(amenity)
 
         self.place_repo.add(place)
         return place
@@ -81,34 +100,37 @@ class HBnBFacade:
         return self.place_repo.get_all()
 
     def update_place(self, place_id, place_data):
-        place = self.place_repo.get(place_id)
+        place = self.get_place(place_id)
         if not place:
             return None
 
-        if 'owner_id' in place_data and not self.user_repo.get(place_data['owner_id']):
-            raise ValueError("Owner not found")
+        data = dict(place_data)
 
-        if 'amenities' in place_data:
-            amenities_ids = place_data.pop('amenities') or []
-            for amenity_id in amenities_ids:
-                if not self.amenity_repo.get(amenity_id):
-                    raise ValueError("Amenity {} not found".format(amenity_id))
-            place.amenities = amenities_ids
+        if "owner_id" in data:
+            owner = self.get_user(data.pop("owner_id"))
+            if not owner:
+                raise ValueError("Owner not found")
+            place.owner = owner
 
-        if 'title' in place_data:
-            Place.validate_title(place_data['title'])
-        if 'price' in place_data:
-            Place.validate_price(place_data['price'])
-        if 'latitude' in place_data:
-            Place.validate_latitude(place_data['latitude'])
-        if 'longitude' in place_data:
-            Place.validate_longitude(place_data['longitude'])
+        if "amenities" in data:
+            amenity_ids = data.pop("amenities") or []
+            amenities = []
 
-        place.update(place_data)
+            for amenity_id in amenity_ids:
+                amenity = self.get_amenity(amenity_id)
+                if not amenity:
+                    raise ValueError("Amenity not found")
+                amenities.append(amenity)
+
+            place.amenities = amenities
+
+        place.update(data)
         return place
 
-    # ---------------- REVIEW (Task 5) ----------------
+    # ---------------- REVIEW ----------------
+
     def create_review(self, review_data):
+
         """
         Create a new review using entity references for User and Place.
         """
@@ -119,11 +141,19 @@ class HBnBFacade:
 
         # 2. Fetch and validate place entity existence
         place = self.place_repo.get(review_data.get('place_id'))
+
+        user = self.get_user(review_data.get("user_id"))
+        if not user:
+            raise ValueError("User not found")
+
+        place = self.get_place(review_data.get("place_id"))
+
         if not place:
             raise ValueError("Place not found")
 
         # 3. Instantiate Review passing actual entity instances (place, user)
         review = Review(
+
             text=review_data.get('text'),
             rating=review_data.get('rating'),
             place=place,
@@ -137,6 +167,16 @@ class HBnBFacade:
         if hasattr(place, 'add_review'):
             place.add_review(review)
 
+            text=review_data.get("text"),
+            rating=review_data.get("rating"),
+            place=place,
+            user=user
+        )
+
+        self.review_repo.add(review)
+        place.add_review(review)
+
+
         return review
 
     def get_review(self, review_id):
@@ -146,68 +186,48 @@ class HBnBFacade:
         return self.review_repo.get_all()
 
     def get_reviews_by_place(self, place_id):
-        place = self.place_repo.get(place_id)
+        place = self.get_place(place_id)
         if not place:
             return None
-        return [r for r in self.review_repo.get_all() if r.place_id == place_id]
+
+        return list(place.reviews)
 
     def update_review(self, review_id, review_data):
-    """
-    Update an existing review's details with strict attribute validation.
+        review = self.get_review(review_id)
+        if not review:
+            return None
 
-    Args:
-        review_id (str): Unique identifier of the review.
-        review_data (dict): Dictionary containing updated fields.
+        data = dict(review_data)
 
-    Returns:
-        Review: The updated review instance, or None if not found.
+        if "user_id" in data:
+            user = self.get_user(data.pop("user_id"))
+            if not user:
+                raise ValueError("User not found")
+            review.user = user
 
-    Raises:
-        ValueError: If rating is invalid or if user_id/place_id do not exist.
-    """
-    # 1. Fetch existing review instance
-    review = self.get_review(review_id)
-    if not review:
-        return None
+        if "place_id" in data:
+            new_place = self.get_place(data.pop("place_id"))
+            if not new_place:
+                raise ValueError("Place not found")
 
-    # 2. Strict Rating Validation (Exclude booleans and validate range)
-    if 'rating' in review_data and review_data['rating'] is not None:
-        rating = review_data['rating']
-        if isinstance(rating, bool) or not isinstance(rating, int) or not (1 <= rating <= 5):
-            raise ValueError("Rating must be an integer between 1 and 5")
-        review.rating = rating
+            old_place = review.place
 
-    # 3. Validate user_id existence if being updated
-    if 'user_id' in review_data and review_data['user_id'] is not None:
-        new_user = self.get_user(review_data['user_id'])
-        if not new_user:
-            raise ValueError("User not found")
-        review.user_id = review_data['user_id']
+            if review in old_place.reviews:
+                old_place.reviews.remove(review)
 
-    # 4. Validate place_id existence if being updated
-    if 'place_id' in review_data and review_data['place_id'] is not None:
-        new_place = self.get_place(review_data['place_id'])
-        if not new_place:
-            raise ValueError("Place not found")
-        review.place_id = review_data['place_id']
+            review.place = new_place
+            new_place.add_review(review)
 
-    # 5. Update text field if provided
-    if 'text' in review_data and review_data['text'] is not None:
-        review.text = review_data['text']
-
-    # 6. Refresh model's updated_at timestamp
-    if hasattr(review, 'update'):
-        review.update(review_data)
-
-    # 7. Persist updated object back to repository
-    self.review_repo.update(review_id, review)
-    return review
+        review.update(data)
+        return review
 
     def delete_review(self, review_id):
-        review = self.review_repo.get(review_id)
+        review = self.get_review(review_id)
+
         if not review:
             return False
-        place = self.place_repo.get(review.place_id)
-        if place and review_id in place.reviews:
-            place.reviews.remove(review_id)
+
+        if review in review.place.reviews:
+            review.place.reviews.remove(review)
+
         return self.review_repo.delete(review_id)
