@@ -3,21 +3,29 @@ from app.services import facade
 
 api = Namespace('amenities', description='Amenity operations')
 
-# Define input request model
+# 1. Request Input Model (Payload for POST and PUT)
 amenity_model = api.model('Amenity', {
     'name': fields.String(required=True, description='Name of the amenity')
 })
 
-# Define output response model for amenities
+# 2. Response Output Model (Success Response Payload)
 amenity_response_model = api.model('AmenityResponse', {
     'id': fields.String(description='Amenity unique identifier'),
     'name': fields.String(description='Name of the amenity')
 })
 
-# Define error response model
+# 3. Error Output Model (Standard Error Payload for 400, 404, etc.)
 error_model = api.model('ErrorResponse', {
     'error': fields.String(description='Error description message')
 })
+
+
+def serialize_amenity(amenity):
+    """Helper function to format amenity instance into JSON output."""
+    return {
+        'id': amenity.id,
+        'name': amenity.name
+    }
 
 
 @api.route('/')
@@ -30,10 +38,7 @@ class AmenityList(Resource):
         amenity_data = api.payload
         try:
             new_amenity = facade.create_amenity(amenity_data)
-            return {
-                'id': new_amenity.id,
-                'name': new_amenity.name
-            }, 201
+            return serialize_amenity(new_amenity), 201
         except ValueError as e:
             return {'error': str(e)}, 400
 
@@ -41,13 +46,7 @@ class AmenityList(Resource):
     def get(self):
         """Retrieve a list of all amenities"""
         amenities = facade.get_all_amenities()
-        return [
-            {
-                'id': amenity.id,
-                'name': amenity.name
-            }
-            for amenity in amenities
-        ], 200
+        return [serialize_amenity(amenity) for amenity in amenities], 200
 
 
 @api.route('/<amenity_id>')
@@ -60,10 +59,7 @@ class AmenityResource(Resource):
         if not amenity:
             return {'error': 'Amenity not found'}, 404
 
-        return {
-            'id': amenity.id,
-            'name': amenity.name
-        }, 200
+        return serialize_amenity(amenity), 200
 
     @api.expect(amenity_model, validate=True)
     @api.response(200, 'Amenity updated successfully', amenity_response_model)
@@ -79,9 +75,6 @@ class AmenityResource(Resource):
 
         try:
             updated_amenity = facade.update_amenity(amenity_id, amenity_data)
-            return {
-                'id': updated_amenity.id,
-                'name': updated_amenity.name
-            }, 200
+            return serialize_amenity(updated_amenity), 200
         except ValueError as e:
             return {'error': str(e)}, 400
