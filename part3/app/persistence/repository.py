@@ -1,95 +1,84 @@
+"""Repository interfaces and in-memory implementation."""
+
 from abc import ABC, abstractmethod
 
+
 class Repository(ABC):
-    """
-    Abstract Base Class defining the interface for data persistence.
-    All repository types (e.g., In-Memory, Database-backed) must implement these methods.
-    """
+    """Define the common persistence interface."""
+
     @abstractmethod
     def add(self, obj):
-        """
-        Add a new object to the persistence layer.
-        """
+        """Add an object to the repository."""
         pass
 
     @abstractmethod
-    def get(self, id):
-        """
-        Retrieve an object by its unique ID.
-        """
+    def get(self, obj_id):
+        """Retrieve an object by ID."""
         pass
 
     @abstractmethod
     def get_all(self):
-        """
-        Retrieve all objects in the persistence layer.
-        """
+        """Retrieve all objects."""
         pass
 
     @abstractmethod
-    def update(self, id, data):
-        """
-        Update an existing object's attributes.
-        """
+    def update(self, obj_id, data):
+        """Update an object."""
         pass
 
     @abstractmethod
-    def delete(self, id):
-        """
-        Delete an object by its unique ID.
-        """
+    def delete(self, obj_id):
+        """Delete an object."""
+        pass
+
+    @abstractmethod
+    def get_by_attribute(self, attr_name, attr_value):
+        """Retrieve an object by one of its attributes."""
         pass
 
 
 class InMemoryRepository(Repository):
-    """
-    In-memory implementation of the Repository interface.
-    Uses a dictionary for fast, temporary data storage during Part 2.
-    """
+    """Store objects temporarily in memory."""
+
     def __init__(self):
-        """
-        Initializes the storage as an empty dictionary.
-        """
+        """Initialize empty storage."""
         self._storage = {}
 
     def add(self, obj):
-        """
-        Saves an object in memory using its unique ID as the key.
-        Returns the saved object.
-        """
+        """Add an object using its ID as the key."""
         self._storage[obj.id] = obj
         return obj
 
-    def get(self, id):
-        """
-        Retrieves an object from memory by its ID.
-        Returns None if the object does not exist.
-        """
-        return self._storage.get(id)
+    def get(self, obj_id):
+        """Retrieve an object by ID."""
+        return self._storage.get(obj_id)
 
     def get_all(self):
-        """
-        Returns a list of all objects currently stored in memory.
-        """
+        """Return all stored objects."""
         return list(self._storage.values())
 
-    def update(self, id, data):
-        """
-        Updates an object's attributes based on its ID and a dictionary of new values.
-        Returns the updated object, or None if the object is not found.
-        """
-        obj = self.get(id)
-        if obj:
-            obj.update(data)
-            return obj
-        return None
+    def update(self, obj_id, data):
+        """Update an object using a dictionary of values."""
+        obj = self.get(obj_id)
 
-    def delete(self, id):
-        """
-        Deletes an object from memory by its ID.
-        Returns True if successfully deleted, False otherwise.
-        """
-        if id in self._storage:
-            del self._storage[id]
-            return True
-        return False
+        if not obj:
+            return None
+
+        obj.update(data)
+        return obj
+
+    def delete(self, obj_id):
+        """Delete an object by ID."""
+        if obj_id not in self._storage:
+            return False
+
+        del self._storage[obj_id]
+        return True
+
+    def get_by_attribute(self, attr_name, attr_value):
+        """Retrieve the first object matching an attribute."""
+        for obj in self._storage.values():
+            if getattr(obj, attr_name, None) == attr_value:
+                return obj
+
+        return None

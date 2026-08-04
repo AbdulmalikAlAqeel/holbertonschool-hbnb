@@ -1,5 +1,5 @@
 from flask_restx import Namespace, Resource, fields
-from app.services import facade
+from app import facade
 
 api = Namespace('amenities', description='Amenity operations')
 
@@ -42,7 +42,11 @@ class AmenityList(Resource):
         except ValueError as e:
             return {'error': str(e)}, 400
 
-    @api.response(200, 'List of amenities retrieved successfully', [amenity_response_model])
+    @api.response(
+        200,
+        'List of amenities retrieved successfully',
+        [amenity_response_model]
+    )
     def get(self):
         """Retrieve a list of all amenities"""
         amenities = facade.get_all_amenities()
@@ -51,7 +55,11 @@ class AmenityList(Resource):
 
 @api.route('/<amenity_id>')
 class AmenityResource(Resource):
-    @api.response(200, 'Amenity details retrieved successfully', amenity_response_model)
+    @api.response(
+        200,
+        'Amenity details retrieved successfully',
+        amenity_response_model
+    )
     @api.response(404, 'Amenity not found', error_model)
     def get(self, amenity_id):
         """Get amenity details by ID"""
