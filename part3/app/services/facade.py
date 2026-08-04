@@ -109,22 +109,34 @@ class HBnBFacade:
 
     # ---------------- REVIEW (Task 5) ----------------
     def create_review(self, review_data):
+        """
+        Create a new review using entity references for User and Place.
+        """
+        # 1. Fetch and validate user entity existence
         user = self.user_repo.get(review_data.get('user_id'))
         if not user:
             raise ValueError("User not found")
 
+        # 2. Fetch and validate place entity existence
         place = self.place_repo.get(review_data.get('place_id'))
         if not place:
             raise ValueError("Place not found")
 
+        # 3. Instantiate Review passing actual entity instances (place, user)
         review = Review(
             text=review_data.get('text'),
             rating=review_data.get('rating'),
-            place_id=review_data.get('place_id'),
-            user_id=review_data.get('user_id')
-        )
+            place=place,
+            user=user
+        )          
+
+        # 4. Save review in the repository
         self.review_repo.add(review)
-        place.add_review(review.id)
+
+        # 5. Link review instance (or review.id) to the place
+        if hasattr(place, 'add_review'):
+            place.add_review(review)
+
         return review
 
     def get_review(self, review_id):
