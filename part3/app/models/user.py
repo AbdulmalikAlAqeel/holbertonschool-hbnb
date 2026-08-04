@@ -6,14 +6,13 @@ from app.models.base import BaseModel
 class User(BaseModel):
     """Represent a user profile in the system."""
 
-    def __init__(
-        self,
-        email,
-        first_name,
-        last_name,
-        password=None,
-        is_admin=False
-    ):
+    def __init__(self, first_name="", last_name="", email="", password=None, is_admin=False, **kwargs):
+        super().__init__(**kwargs)
+        self.first_name = first_name
+        self.last_name = last_name
+        self.email = email
+        self.password = password
+        self.is_admin = is_admin
         """Initialize a user."""
         super().__init__()
         self.email = email
@@ -86,3 +85,18 @@ class User(BaseModel):
             )
 
         return value
+
+    def update(self, data):
+        """Update user attributes dynamically using property setters."""
+        for key, value in data.items():
+            # Skip immutable or system-managed attributes
+            if key in ['id', 'created_at', 'updated_at']:
+                continue
+
+            # Update attribute via setter if it exists on the instance
+            if hasattr(self, key):
+                setattr(self, key, value)
+
+        # Update timestamps if inherited from base model
+        if hasattr(super(), 'save'):
+            super().save()    
