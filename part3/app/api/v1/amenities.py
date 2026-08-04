@@ -1,85 +1,87 @@
 from flask_restx import Namespace, Resource, fields
+from app.services import facade
 
-from app import facade
+api = Namespace('amenities', description='Amenity operations')
 
+# Define input request model
+amenity_model = api.model('Amenity', {
+    'name': fields.String(required=True, description='Name of the amenity')
+})
 
-api = Namespace("amenities", description="Amenity operations")
+# Define output response model for amenities
+amenity_response_model = api.model('AmenityResponse', {
+    'id': fields.String(description='Amenity unique identifier'),
+    'name': fields.String(description='Name of the amenity')
+})
 
-
-amenity_model = api.model(
-    "Amenity",
-    {
-        "name": fields.String(
-            required=True,
-            description="Amenity name"
-        ),
-    },
-)
-
-
-def serialize_amenity(amenity):
-    """Convert an amenity object to a dictionary."""
-    return {
-        "id": amenity.id,
-        "name": amenity.name,
-    }
+# Define error response model
+error_model = api.model('ErrorResponse', {
+    'error': fields.String(description='Error description message')
+})
 
 
-@api.route("/")
+@api.route('/')
 class AmenityList(Resource):
-    """Resource for creating and retrieving amenities."""
-
     @api.expect(amenity_model, validate=True)
+    @api.response(201, 'Amenity successfully created', amenity_response_model)
+    @api.response(400, 'Invalid input data', error_model)
     def post(self):
-        """Create a new amenity."""
+        """Register a new amenity"""
         amenity_data = api.payload
-
         try:
             new_amenity = facade.create_amenity(amenity_data)
-        except (ValueError, TypeError) as error:
-            return {"error": str(error)}, 400
+            return {
+                'id': new_amenity.id,
+                'name': new_amenity.name
+            }, 201
+        except ValueError as e:
+            return {'error': str(e)}, 400
 
-        return serialize_amenity(new_amenity), 201
-
+    @api.response(200, 'List of amenities retrieved successfully', [amenity_response_model])
     def get(self):
-        """Retrieve all amenities."""
+        """Retrieve a list of all amenities"""
         amenities = facade.get_all_amenities()
-
         return [
-            serialize_amenity(amenity)
+            {
+                'id': amenity.id,
+                'name': amenity.name
+            }
             for amenity in amenities
         ], 200
 
 
-@api.route("/<string:amenity_id>")
+@api.route('/<amenity_id>')
 class AmenityResource(Resource):
-    """Resource for retrieving and updating an amenity."""
-
+    @api.response(200, 'Amenity details retrieved successfully', amenity_response_model)
+    @api.response(404, 'Amenity not found', error_model)
     def get(self, amenity_id):
-        """Retrieve an amenity by ID."""
+        """Get amenity details by ID"""
         amenity = facade.get_amenity(amenity_id)
+        if not amenity:
+            return {'error': 'Amenity not found'}, 404
 
-        if amenity is None:
-            return {"error": "Amenity not found"}, 404
-
-        return serialize_amenity(amenity), 200
+        return {
+            'id': amenity.id,
+            'name': amenity.name
+        }, 200
 
     @api.expect(amenity_model, validate=True)
+    @api.response(200, 'Amenity updated successfully', amenity_response_model)
+    @api.response(400, 'Invalid input data', error_model)
+    @api.response(404, 'Amenity not found', error_model)
     def put(self, amenity_id):
-        """Update an existing amenity."""
-        amenity = facade.get_amenity(amenity_id)
-
-        if amenity is None:
-            return {"error": "Amenity not found"}, 404
-
+        """Update an amenity's information"""
         amenity_data = api.payload
 
-        try:
-            updated_amenity = facade.update_amenity(
-                amenity_id,
-                amenity_data
-            )
-        except (ValueError, TypeError) as error:
-            return {"error": str(error)}, 400
+        amenity = facade.get_amenity(amenity_id)
+        if not amenity:
+            return {'error': 'Amenity not found'}, 404
 
-        return serialize_amenity(updated_amenity), 200
+        try:
+            updated_amenity = facade.update_amenity(amenity_id, amenity_data)
+            return {
+                'id': updated_amenity.id,
+                'name': updated_amenity.name
+            }, 200
+        except ValueError as e:
+            return {'error': str(e)}, 400
