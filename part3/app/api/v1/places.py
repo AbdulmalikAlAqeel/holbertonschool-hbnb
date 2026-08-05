@@ -1,7 +1,7 @@
 """API endpoints for managing places."""
 
 from flask_restx import Namespace, Resource, fields
-
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import facade
 
 
@@ -113,7 +113,14 @@ class PlaceList(Resource):
     @api.expect(place_creation_model, validate=True)
     @api.response(201, "Place created successfully")
     @api.response(400, "Invalid input data")
+    @jwt_required()
     def post(self):
+        """Protected endpoint: Create a new place."""
+        current_user_id = get_jwt_identity()  
+        place_data = api.payload
+
+        place_data['owner_id'] = current_user_id
+
         """Register a new place."""
         try:
             place = facade.create_place(api.payload)
