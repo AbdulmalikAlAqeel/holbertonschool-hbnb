@@ -1,25 +1,33 @@
+"""User model."""
+
 import re
 
+from app.extensions import bcrypt
 from app.models.base import BaseModel
 
 
 class User(BaseModel):
     """Represent a user profile in the system."""
 
-    def __init__(self, first_name="", last_name="", email="", password=None, is_admin=False, **kwargs):
-        super().__init__(**kwargs)
-        self.first_name = first_name
-        self.last_name = last_name
-        self.email = email
-        self.password = password
-        self.is_admin = is_admin
+    def __init__(
+        self,
+        first_name="",
+        last_name="",
+        email="",
+        password=None,
+        is_admin=False
+    ):
         """Initialize a user."""
         super().__init__()
-        self.email = email
+
         self.first_name = first_name
         self.last_name = last_name
-        self.password = password
+        self.email = email
         self.is_admin = is_admin
+        self.password = None
+
+        if password is not None:
+            self.hash_password(password)
 
     @property
     def email(self):
@@ -33,6 +41,7 @@ class User(BaseModel):
             raise ValueError("Email must be a non-empty string.")
 
         pattern = r"^[\w.-]+@[\w.-]+\.\w+$"
+
         if not re.match(pattern, value):
             raise ValueError("Invalid email format.")
 
@@ -46,7 +55,10 @@ class User(BaseModel):
     @first_name.setter
     def first_name(self, value):
         """Validate and set the user's first name."""
-        self._first_name = self.validate_name(value, "First name")
+        self._first_name = self.validate_name(
+            value,
+            "First name"
+        )
 
     @property
     def last_name(self):
@@ -56,7 +68,10 @@ class User(BaseModel):
     @last_name.setter
     def last_name(self, value):
         """Validate and set the user's last name."""
-        self._last_name = self.validate_name(value, "Last name")
+        self._last_name = self.validate_name(
+            value,
+            "Last name"
+        )
 
     @property
     def is_admin(self):
@@ -86,17 +101,48 @@ class User(BaseModel):
 
         return value
 
+    def hash_password(self, password):
+        """Hash and store a plaintext password."""
+        if not isinstance(password, str) or not password:
+            raise ValueError(
+                "Password must be a non-empty string."
+            )
+
+        self.password = bcrypt.generate_password_hash(
+            password
+        ).decode("utf-8")
+
+    def verify_password(self, password):
+        """Check a plaintext password against its stored hash."""
+        if not self.password:
+            return False
+
+        return bcrypt.check_password_hash(
+            self.password,
+            password
+        )
+
     def update(self, data):
-        """Update user attributes dynamically using property setters."""
+        """Update allowed user attributes."""
+        if not isinstance(data, dict):
+            raise ValueError(
+                "Update data must be a dictionary."
+            )
+
+        protected_keys = {
+            "id",
+            "created_at",
+            "updated_at",
+            "is_admin"
+        }
+
         for key, value in data.items():
-            # Skip immutable or system-managed attributes
-            if key in ['id', 'created_at', 'updated_at']:
+            if key in protected_keys:
                 continue
 
-            # Update attribute via setter if it exists on the instance
-            if hasattr(self, key):
+            if key == "password":
+                self.hash_password(value)
+            elif hasattr(self, key):
                 setattr(self, key, value)
 
-        # Update timestamps if inherited from base model
-        if hasattr(super(), 'save'):
-            super().save()    
+        self.save()
