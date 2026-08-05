@@ -16,7 +16,10 @@ user_model = api.model('User', {
 
 user_update_model = api.model('UserUpdate', {
     'first_name': fields.String(description='First name of the user'),
-    'last_name': fields.String(description='Last name of the user')
+    'last_name': fields.String(description='Last name of the user'),
+    'email': fields.String(description='Email address (Admin only)'),
+    'password': fields.String(description='Password (Admin only)'),
+    'is_admin': fields.Boolean(description='Admin privileges status (Admin only)')
 })
 
 
@@ -41,7 +44,7 @@ class UserList(Resource):
         """Public / Admin: Register user (Non-admins cannot create admin accounts)."""
         data = api.payload
 
-        # Ensure non-authenticated/regular users cannot set is_admin to True
+        # Restriction: Regular users cannot create admin accounts directly
         if data.get('is_admin', False):
             try:
                 claims = get_jwt()
@@ -50,6 +53,7 @@ class UserList(Resource):
             except Exception:
                 return {'error': 'Admin access required to create an admin user'}, 403
 
+        # Validate unique email
         existing_user = facade.get_user_by_email(data.get('email'))
         if existing_user:
             return {'error': 'Email already registered'}, 400
@@ -86,20 +90,32 @@ class UserResource(Resource):
     @jwt_required()
     @api.expect(user_update_model)
     def put(self, user_id):
-        """Protected: Modify user details (Restricted fields for non-admins)."""
+        """Protected: Modify user details (Admins can update email and password)."""
         current_user_id = get_jwt_identity()
         claims = get_jwt()
         is_admin = claims.get('is_admin', False)
 
-        # Allow access only to account owner or administrators
+        # 1. Authorization check: Account owner or Administrator
         if current_user_id != user_id and not is_admin:
             return {'error': 'Unauthorized action'}, 403
 
+        # 2. Verify target user exists
+        user = facade.get_user(user_id)
+        if not user:
+            return {'error': 'User not found'}, 404
+
         data = api.payload
 
-        # Regular users are strictly forbidden from altering email or password here
-        if not is_admin and ('email' in data or 'password' in data):
-            return {'error': 'Updating email or password is not allowed here'}, 400
+        # 3. Restriction: Non-admin users cannot alter sensitive fields
+        if not is_admin:
+            if 'email' in data or 'password' in data or 'is_admin' in data:
+                return {'error': 'Updating email or password is not allowed here'}, 400
+
+        # 4. Admin uniqueness check when updating email
+        if 'email' in data and data['email'] != user.email:
+            existing_user = facade.get_user_by_email(data['email'])
+            if existing_user:
+                return {'error': 'Email already registered'}, 400
 
         try:
             updated_user = facade.update_user(user_id, data)
@@ -119,7 +135,7 @@ class UserResource(Resource):
         claims = get_jwt()
         is_admin = claims.get('is_admin', False)
 
-        # Allow deletion only if the user deletes their own account or is an admin
+        # Deletion permitted only for the user themselves or an administrator
         if current_user_id != user_id and not is_admin:
             return {'error': 'Unauthorized action'}, 403
 
