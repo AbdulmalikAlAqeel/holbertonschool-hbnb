@@ -4,15 +4,13 @@ from app.models.user import User
 from app.models.place import Place
 from app.models.review import Review
 from app.models.amenity import Amenity
-from app.persistence.repository import (
-    InMemoryRepository,
-    SQLAlchemyRepository
-)
+from app.persistence.repository import InMemoryRepository
+from app.persistence.user_repository import UserRepository
 
 
 class HBnBFacade:
     def __init__(self):
-        self.user_repo = SQLAlchemyRepository(User)
+        self.user_repo = UserRepository()
         self.place_repo = InMemoryRepository()
         self.review_repo = InMemoryRepository()
         self.amenity_repo = InMemoryRepository()
@@ -20,7 +18,6 @@ class HBnBFacade:
     # ==================== USER OPERATIONS ====================
     def create_user(self, user_data):
         user = User(**user_data)
-        user.hash_password(user_data['password'])
         self.user_repo.add(user)
         return user
 
@@ -31,19 +28,10 @@ class HBnBFacade:
         return self.user_repo.get_all()
 
     def get_user_by_email(self, email):
-        return self.user_repo.get_by_attribute('email', email)
+        return self.user_repo.get_user_by_email(email)
 
     def update_user(self, user_id, user_data):
-        user = self.get_user(user_id)
-        if not user:
-            return None
-
-        # Check if password needs to be updated and hashed
-        if 'password' in user_data:
-            user.hash_password(user_data.pop('password'))
-
-        user.update(user_data)
-        return user
+        return self.user_repo.update(user_id, user_data)
 
     def delete_user(self, user_id):
         return self.user_repo.delete(user_id)
@@ -142,7 +130,10 @@ class HBnBFacade:
         return self.review_repo.get_all()
 
     def get_reviews_by_place(self, place_id):
-        return [r for r in self.review_repo.get_all() if r.place_id == place_id]
+        return [
+            r for r in self.review_repo.get_all()
+            if r.place_id == place_id
+        ]
 
     def update_review(self, review_id, review_data):
         review = self.get_review(review_id)

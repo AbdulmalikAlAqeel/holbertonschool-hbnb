@@ -2,6 +2,8 @@ from app.models.base import BaseModel
 
 
 class Amenity(BaseModel):
+    __abstract__ = True
+
     def __init__(self, name="", **kwargs):
         super().__init__(**kwargs)
         self.name = name  # Triggers property setter validation automatically

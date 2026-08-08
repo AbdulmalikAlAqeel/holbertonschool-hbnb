@@ -4,6 +4,8 @@ from app.models.amenity import Amenity
 
 
 class Place(BaseModel):
+    __abstract__ = True
+
     """Represent a rental place."""
 
     def __init__(

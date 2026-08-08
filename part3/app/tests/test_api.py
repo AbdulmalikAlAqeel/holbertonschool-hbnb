@@ -4,18 +4,21 @@ import json
 from flask_jwt_extended import create_access_token
 
 from app import create_app, facade
+from app.extensions import db
 
 
 class HBnBAPITestCase(unittest.TestCase):
     """Test the HBnB API with JWT authentication."""
 
     def setUp(self):
-        self.app = create_app()
+        self.app = create_app("config.TestingConfig")
         self.client = self.app.test_client()
         self.app_context = self.app.app_context()
         self.app_context.push()
 
-        facade.user_repo._storage.clear()
+        db.drop_all()
+        db.create_all()
+
         facade.amenity_repo._storage.clear()
         facade.place_repo._storage.clear()
         facade.review_repo._storage.clear()

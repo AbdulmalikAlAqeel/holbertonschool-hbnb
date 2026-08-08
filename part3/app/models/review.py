@@ -3,6 +3,8 @@ from app.models.user import User
 
 
 class Review(BaseModel):
+    __abstract__ = True
+
     """Represent a review for a place."""
 
     def __init__(self, text, rating, place, user):

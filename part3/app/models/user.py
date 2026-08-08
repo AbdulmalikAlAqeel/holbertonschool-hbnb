@@ -2,12 +2,41 @@
 
 import re
 
-from app.extensions import bcrypt
+from app.extensions import bcrypt, db
 from app.models.base import BaseModel
 
 
 class User(BaseModel):
     """Represent a user profile in the system."""
+
+    __tablename__ = "users"
+
+    _first_name = db.Column(
+        "first_name",
+        db.String(50),
+        nullable=False
+    )
+    _last_name = db.Column(
+        "last_name",
+        db.String(50),
+        nullable=False
+    )
+    _email = db.Column(
+        "email",
+        db.String(120),
+        nullable=False,
+        unique=True
+    )
+    password = db.Column(
+        db.String(128),
+        nullable=False
+    )
+    _is_admin = db.Column(
+        "is_admin",
+        db.Boolean,
+        default=False,
+        nullable=False
+    )
 
     def __init__(
         self,
@@ -19,12 +48,10 @@ class User(BaseModel):
     ):
         """Initialize a user."""
         super().__init__()
-
         self.first_name = first_name
         self.last_name = last_name
         self.email = email
         self.is_admin = is_admin
-        self.password = None
 
         if password is not None:
             self.hash_password(password)

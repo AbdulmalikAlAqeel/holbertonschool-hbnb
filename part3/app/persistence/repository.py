@@ -2,6 +2,8 @@
 
 from abc import ABC, abstractmethod
 
+from app.extensions import db
+
 
 class Repository(ABC):
     """Define the common persistence interface."""
@@ -82,9 +84,6 @@ class InMemoryRepository(Repository):
                 return obj
 
         return None
-
-
-from app.extensions import db
 
 
 class SQLAlchemyRepository(Repository):
