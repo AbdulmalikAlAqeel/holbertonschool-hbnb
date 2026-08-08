@@ -4,7 +4,7 @@ from flask import Flask
 from flask_restx import Api
 from flask_jwt_extended import JWTManager
 
-from app.extensions import bcrypt
+from app.extensions import bcrypt, db
 from app.services.facade import HBnBFacade
 
 # Initialize the main facade instance for business logic access
@@ -23,6 +23,7 @@ def create_app(config_class="config.DevelopmentConfig"):
 
     # Initialize extensions with the application instance
     bcrypt.init_app(app)
+    db.init_app(app)
     jwt.init_app(app)
 
     # Disable Swagger payload masking
