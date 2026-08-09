@@ -37,6 +37,11 @@ part3/
 
 
 
+
+
+
+
+
 📐 Database Entity-Relationship (ER) DiagramThe database schema is structured around five core tables: users, places, reviews, amenities, and the association table place_amenity.
 
 Entity Relationships Summary:
