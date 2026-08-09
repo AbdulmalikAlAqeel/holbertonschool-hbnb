@@ -1,128 +1,97 @@
-# HBnB Evolution - Part 2: Business Logic & API Endpoints
+# HBnB - Part 3: Database Storage & Persistence
 
-Welcome to the implementation phase of the **HBnB Evolution** project. In this part, we transition from theoretical design to writing functional, production-grade code. Using a modular **three-tier architecture**, we have built the **Presentation** (API) and **Business Logic** layers of the application using Python, Flask, and Flask-RESTx. 
-
-To maintain clean separation of concerns and prepare the codebase for future database integration (SQLAlchemy in Part 3), we implemented the **Facade Design Pattern** alongside a robust **In-Memory Repository Pattern**.
+Welcome to **Part 3** of the HBnB project. In this section, we transition our application's persistence layer from a file-based storage mechanism (JSON) to a robust relational database management system using **MySQL** and **SQLAlchemy ORM**.
 
 ---
 
-## 🏗️ Architectural Overview
+## 📌 Project Overview
 
-This project is built around a **Layered (Three-Tier) Architecture** coupled with the **Facade Pattern**:
-
-1. **Presentation Layer (API):** Handled by Flask-RESTx. It routes incoming HTTP requests, performs payload validation, manages serialization (nested JSON responses), and outputs standardized HTTP status codes.
-2. **Business Logic Layer (Domain Models):** Core entity models (`User`, `Place`, `Amenity`, `Review`) containing strict validation checks to protect data integrity at the domain level.
-3. **Persistence Layer (Repositories):** An abstraction layer that currently handles temporary data management through an in-memory dictionary.
+The objective of Part 3 is to integrate a relational database to handle data persistence securely and efficiently. By leveraging Object-Relational Mapping (ORM) via SQLAlchemy, the application bridges the gap between Python classes and database tables, allowing smooth data manipulation, object querying, and relationship management.
 
 ---
 
-## Project Structure
+## 🛠️ Tech Stack & Key Technologies
 
-```
-part2/
-├── app/
-│   ├── api/
-│   │   └── v1/
-│   ├── models/
-│   ├── persistence/
-│   └── services/
-├── config.py
-├── run.py
-├── requirements.txt
-└── README.md
-```
-
-### Directory Description
-
-- **app/**: Main application package.
-- **app/api/**: REST API endpoints.
-- **app/models/**: Business models.
-- **app/persistence/**: Repository layer.
-- **app/services/**: Facade and business services.
-- **config.py**: Application configuration classes.
-- **run.py**: Application entry point.
+* **Language:** Python 3.x
+* **Framework:** Flask / Flask-RESTx
+* **Database:** MySQL
+* **ORM:** SQLAlchemy
+* **Diagramming:** Mermaid.js
+* **Version Control:** Git & GitHub
 
 ---
 
-## Installation
+## 📁 Directory Structure
 
-Clone the repository:
+```text
+part3/
+├── api/                   # API routes, namespaces, and endpoints
+├── models/                # SQLAlchemy database models (User, Place, Review, Amenity)
+├── persistence/           # Database setup and repository interfaces
+├── docs/                  # Project documentation and visual schemas
+│   ├── schema.md          # ER Diagram documentation in Mermaid.js
+│   └── mermaid-diagram.png # Exported ER Diagram image
+├── config.py              # Environment configuration settings
+├── app.py                 # Application entry point
+└── README.md              # Documentation for Part 3
 
-```bash
-git clone <repository-url>
-```
 
-Move into the project:
 
-```bash
-cd holbertonschool-hbnb/part2
-```
+📐 Database Entity-Relationship (ER) DiagramThe database schema is structured around five core tables: users, places, reviews, amenities, and the association table place_amenity.
 
-Create a virtual environment:
+Entity Relationships Summary:
 
-```bash
-python3 -m venv venv
-```
 
-Activate it:
+User $\leftrightarrow$ Place: One-to-Many (User can own multiple Places).
 
-```bash
-source venv/bin/activate
-```
+User $\leftrightarrow$ Review: One-to-Many (User can write multiple Reviews).
 
-Install the dependencies:
+Place $\leftrightarrow$ Review: One-to-Many (Place can have multiple Reviews).
 
-```bash
+Place $\leftrightarrow$ Amenity: Many-to-Many (Linked via Place_Amenity bridge table).
+
+💡 For detailed Mermaid.js code, visit docs/schema.md.
+
+🚀 Setup & Installation Instructions
+
+1.PrerequisitesEnsure
+
+you have MySQL installed and running on your system, along with Python 3.8+.
+
+2. Database Configuration
+
+Create the MySQL database and setup user privileges:
+
+SQL
+
+CREATE DATABASE IF NOT EXISTS hbnb_dev_db;
+CREATE USER IF NOT EXISTS 'hbnb_dev'@'localhost' IDENTIFIED BY 'hbnb_dev_pwd';
+GRANT ALL PRIVILEGES ON hbnb_dev_db.* TO 'hbnb_dev'@'localhost';
+FLUSH PRIVILEGES;
+
+3. Environment Variables
+
+Set the required environment variables for database connections:
+
+export HBNB_ENV="db"
+export HBNB_MYSQL_USER="hbnb_dev"
+export HBNB_MYSQL_PWD="hbnb_dev_pwd"
+export HBNB_MYSQL_HOST="localhost"
+export HBNB_MYSQL_DB="hbnb_dev_db"
+
+4. Install Dependencies & Run
+
+Install the necessary Python packages and start the application server:
+
 pip install -r requirements.txt
-```
+python3 app.py
 
----
+🧪 Testing
 
-## Running the Application
+To run the automated test suite for the database storage layer:
 
-Start the server:
+pytest tests/
 
-```bash
-python3 run.py
-```
+👤 Author
 
-The application will be available at:
-
-```
-http://127.0.0.1:5000
-```
-
----
-
-## Testing
-
-Run the application:
-
-```bash
-python3 run.py
-```
-
-You can test the endpoints using:
-
-- curl
-- Postman
-- Insomnia
-
-Example:
-
-```bash
-curl http://127.0.0.1:5000/
-```
-
----
-
-## Dependencies
-
-- Flask
-- Flask-RESTx
-
-Install them with:
-
-```bash
-pip install -r requirements.txt
-```
+Binaqeel Abdulmalik - Aloraini Khalid - Aljohani Afnan GitHub Repository: https://github.com/AbdulmalikAlAqeel/holbertonschool-hbnb.git
