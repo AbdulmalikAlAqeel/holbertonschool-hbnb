@@ -38,6 +38,17 @@ class User(BaseModel):
         nullable=False
     )
 
+    places = db.relationship(
+        "Place",
+        back_populates="owner",
+        cascade="all, delete-orphan"
+    )
+    reviews = db.relationship(
+        "Review",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
     def __init__(
         self,
         first_name="",

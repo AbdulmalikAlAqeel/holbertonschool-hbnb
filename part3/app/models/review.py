@@ -1,11 +1,32 @@
+"""Review model."""
+
+from sqlalchemy.orm import validates
+
+from app.extensions import db
 from app.models.base import BaseModel
 from app.models.user import User
 
 
 class Review(BaseModel):
-    __abstract__ = True
-
     """Represent a review for a place."""
+
+    __tablename__ = "reviews"
+
+    text = db.Column(db.String(1024), nullable=False)
+    rating = db.Column(db.Integer, nullable=False)
+    place_id = db.Column(
+        db.String(36),
+        db.ForeignKey("places.id"),
+        nullable=False
+    )
+    user_id = db.Column(
+        db.String(36),
+        db.ForeignKey("users.id"),
+        nullable=False
+    )
+
+    place = db.relationship("Place", back_populates="reviews")
+    user = db.relationship("User", back_populates="reviews")
 
     def __init__(self, text, rating, place, user):
         """Initialize a review."""
@@ -15,26 +36,16 @@ class Review(BaseModel):
         self.place = place
         self.user = user
 
-    @property
-    def text(self):
-        """Return the review text."""
-        return self._text
-
-    @text.setter
-    def text(self, value):
+    @validates("text")
+    def validate_text(self, key, value):
         """Validate and set the review text."""
         if not isinstance(value, str) or not value.strip():
             raise ValueError("Review text must be a non-empty string.")
 
-        self._text = value
+        return value
 
-    @property
-    def rating(self):
-        """Return the review rating."""
-        return self._rating
-
-    @rating.setter
-    def rating(self, value):
+    @validates("rating")
+    def validate_rating(self, key, value):
         """Validate and set the review rating."""
         if isinstance(value, bool) or not isinstance(value, int):
             raise ValueError(
@@ -46,42 +57,22 @@ class Review(BaseModel):
                 "Rating must be an integer between 1 and 5."
             )
 
-        self._rating = value
+        return value
 
-    @property
-    def place(self):
-        """Return the related Place object."""
-        return self._place
-
-    @place.setter
-    def place(self, value):
-        """Validate and set the related place."""
+    @validates("place")
+    def validate_place(self, key, value):
+        """Validate the related place."""
         from app.models.place import Place
 
         if not isinstance(value, Place):
             raise ValueError("Place must be a Place instance.")
 
-        self._place = value
+        return value
 
-    @property
-    def user(self):
-        """Return the related User object."""
-        return self._user
-
-    @user.setter
-    def user(self, value):
-        """Validate and set the related user."""
+    @validates("user")
+    def validate_user(self, key, value):
+        """Validate the related user."""
         if not isinstance(value, User):
             raise ValueError("User must be a User instance.")
 
-        self._user = value
-
-    @property
-    def place_id(self):
-        """Return the place ID for API compatibility."""
-        return self.place.id
-
-    @property
-    def user_id(self):
-        """Return the user ID for API compatibility."""
-        return self.user.id
+        return value
