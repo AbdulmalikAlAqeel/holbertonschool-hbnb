@@ -34,68 +34,63 @@ part3/
 ├── config.py              # Environment configuration settings
 ├── app.py                 # Application entry point
 └── README.md              # Documentation for Part 3
+```
 
+---
 
-
-
-
-
-
-
-📐 Database Entity-Relationship (ER) DiagramThe database schema is structured around five core tables: users, places, reviews, amenities, and the association table place_amenity.
+## 📐 Database Entity-Relationship (ER) Diagram
 
 Entity Relationships Summary:
+User <-> Place: One-to-Many (User can own multiple Places).
 
+User <-> Review: One-to-Many (User can write multiple Reviews).
 
-User $\leftrightarrow$ Place: One-to-Many (User can own multiple Places).
+Place <-> Review: One-to-Many (Place can have multiple Reviews).
 
-User $\leftrightarrow$ Review: One-to-Many (User can write multiple Reviews).
-
-Place $\leftrightarrow$ Review: One-to-Many (Place can have multiple Reviews).
-
-Place $\leftrightarrow$ Amenity: Many-to-Many (Linked via Place_Amenity bridge table).
+Place <-> Amenity: Many-to-Many (Linked via Place_Amenity bridge table).
 
 💡 For detailed Mermaid.js code, visit docs/schema.md.
 
 🚀 Setup & Installation Instructions
 
-1.PrerequisitesEnsure
-
-you have MySQL installed and running on your system, along with Python 3.8+.
+1. Prerequisites
+Ensure you have MySQL installed and running on your system, along with Python 3.8+.
 
 2. Database Configuration
-
 Create the MySQL database and setup user privileges:
 
-SQL
-
+```
 CREATE DATABASE IF NOT EXISTS hbnb_dev_db;
 CREATE USER IF NOT EXISTS 'hbnb_dev'@'localhost' IDENTIFIED BY 'hbnb_dev_pwd';
 GRANT ALL PRIVILEGES ON hbnb_dev_db.* TO 'hbnb_dev'@'localhost';
 FLUSH PRIVILEGES;
+```
 
 3. Environment Variables
-
 Set the required environment variables for database connections:
 
+```
 export HBNB_ENV="db"
 export HBNB_MYSQL_USER="hbnb_dev"
 export HBNB_MYSQL_PWD="hbnb_dev_pwd"
 export HBNB_MYSQL_HOST="localhost"
 export HBNB_MYSQL_DB="hbnb_dev_db"
+```
 
 4. Install Dependencies & Run
-
 Install the necessary Python packages and start the application server:
 
+```
 pip install -r requirements.txt
 python3 app.py
+```
 
 🧪 Testing
-
 To run the automated test suite for the database storage layer:
 
+```
 pytest tests/
+```
 
 👤 Author
 
