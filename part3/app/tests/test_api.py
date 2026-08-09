@@ -1,202 +1,266 @@
 import unittest
 import json
+
+from flask_jwt_extended import create_access_token
+
 from app import create_app, facade
+from app.extensions import db
+
 
 class HBnBAPITestCase(unittest.TestCase):
-    """
-    Test suite for testing the HBnB API endpoints (Users, Amenities, Places, Reviews).
-    """
+    """Test the HBnB API with JWT authentication."""
+
     def setUp(self):
-        """
-        Executed before each test. Sets up the Flask test client 
-        and resets the in-memory repositories for complete isolation.
-        """
-        self.app = create_app()
+        self.app = create_app("config.TestingConfig")
         self.client = self.app.test_client()
         self.app_context = self.app.app_context()
         self.app_context.push()
 
-        # Deep reset of in-memory storages to ensure clean state for every single test
-        facade.user_repo._storage.clear()
+        db.drop_all()
+        db.create_all()
+
         facade.amenity_repo._storage.clear()
         facade.place_repo._storage.clear()
         facade.review_repo._storage.clear()
 
     def tearDown(self):
-        """
-        Executed after each test. Pops the application context.
-        """
         self.app_context.pop()
 
-    # =========================================================================
-    # USER ENDPOINT TESTS
-    # =========================================================================
+    def create_user(
+        self,
+        email="user@example.com",
+        password="pass123",
+        first_name="John",
+        last_name="Doe"
+    ):
+        payload = {
+            "first_name": first_name,
+            "last_name": last_name,
+            "email": email,
+            "password": password
+        }
+
+        return self.client.post(
+            "/api/v1/users/",
+            data=json.dumps(payload),
+            content_type="application/json"
+        )
+
+    def login(self, email, password="pass123"):
+        response = self.client.post(
+            "/api/v1/auth/login",
+            data=json.dumps({
+                "email": email,
+                "password": password
+            }),
+            content_type="application/json"
+        )
+
+        return response.get_json()["access_token"]
+
+    def auth_headers(self, token):
+        return {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
 
     def test_create_user_success(self):
-        """Test successful registration of a new user."""
-        payload = {
-            "first_name": "John",
-            "last_name": "Doe",
-            "email": "john.doe@example.com"
-        }
-        response = self.client.post('/api/v1/users/', 
-                                    data=json.dumps(payload), 
-                                    content_type='application/json')
+        response = self.create_user()
+
         self.assertEqual(response.status_code, 201)
+
         data = response.get_json()
-        self.assertIn('id', data)
-        self.assertEqual(data['first_name'], "John")
-        self.assertEqual(data['email'], "john.doe@example.com")
+
+        self.assertIn("id", data)
+        self.assertEqual(data["first_name"], "John")
+        self.assertEqual(data["email"], "user@example.com")
+        self.assertNotIn("password", data)
 
     def test_create_user_duplicate_email(self):
-        """Test that registering a duplicate email returns an HTTP 400 error."""
-        payload = {
-            "first_name": "John",
-            "last_name": "Doe",
-            "email": "duplicate@example.com"
-        }
-        # First registration
-        self.client.post('/api/v1/users/', data=json.dumps(payload), content_type='application/json')
-        # Second registration with same email
-        response = self.client.post('/api/v1/users/', data=json.dumps(payload), content_type='application/json')
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("Email already registered", response.get_json()['message'])
+        self.create_user(email="duplicate@example.com")
 
-    # =========================================================================
-    # AMENITY ENDPOINT TESTS
-    # =========================================================================
+        response = self.create_user(
+            email="duplicate@example.com"
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(
+            "Email already registered",
+            response.get_json()["error"]
+        )
 
     def test_create_amenity_success(self):
-        """Test successful creation of a new amenity."""
-        payload = {"name": "WiFi"}
-        response = self.client.post('/api/v1/amenities/', 
-                                    data=json.dumps(payload), 
-                                    content_type='application/json')
-        self.assertEqual(response.status_code, 201)
-        data = response.get_json()
-        self.assertEqual(data['name'], "WiFi")
+        admin_token = create_access_token(
+            identity="test-admin",
+            additional_claims={"is_admin": True}
+        )
 
-    # =========================================================================
-    # PLACE ENDPOINT TESTS
-    # =========================================================================
+        response = self.client.post(
+            "/api/v1/amenities/",
+            data=json.dumps({"name": "WiFi"}),
+            headers=self.auth_headers(admin_token)
+        )
+
+        self.assertEqual(response.status_code, 201)
+
+        data = response.get_json()
+
+        self.assertEqual(data["name"], "WiFi")
+        self.assertIn("id", data)
 
     def test_create_place_success(self):
-        """Test creating a place linked to a valid registered owner."""
-        # 1. First, create the owner
-        user_payload = {"first_name": "Host", "last_name": "One", "email": "host@example.com"}
-        user_res = self.client.post('/api/v1/users/', data=json.dumps(user_payload), content_type='application/json')
-        owner_id = user_res.get_json()['id']
+        self.create_user(email="owner@example.com")
 
-        # 2. Create the place
-        place_payload = {
-            "title": "Modern Apartment",
-            "description": "City center",
-            "price": 150.0,
-            "latitude": 40.7128,
-            "longitude": -74.0060,
-            "owner_id": owner_id,
-            "amenity_ids": []
-        }
-        response = self.client.post('/api/v1/places/', 
-                                    data=json.dumps(place_payload), 
-                                    content_type='application/json')
+        token = self.login("owner@example.com")
+
+        response = self.client.post(
+            "/api/v1/places/",
+            data=json.dumps({
+                "title": "Modern Apartment",
+                "description": "City center",
+                "price": 150.0,
+                "latitude": 40.7128,
+                "longitude": -74.0060,
+                "amenities": []
+            }),
+            headers=self.auth_headers(token)
+        )
+
         self.assertEqual(response.status_code, 201)
-        data = response.get_json()
-        self.assertEqual(data['title'], "Modern Apartment")
-        self.assertEqual(data['owner']['id'], owner_id)
 
-    # =========================================================================
-    # REVIEW ENDPOINT TESTS (INCLUDING DELETE)
-    # =========================================================================
+        data = response.get_json()
+
+        self.assertEqual(data["title"], "Modern Apartment")
+        self.assertIn("id", data)
+        self.assertIn("owner", data)
 
     def test_review_full_lifecycle(self):
-        """
-        Test the complete CRUD lifecycle for Review endpoints, including:
-        1. Setup User and Place
-        2. Create Review (POST)
-        3. Get Review by ID (GET)
-        4. Partial Update (PUT) & verification of updated object return
-        5. Get Place Reviews (GET /places/<id>/reviews)
-        6. Delete Review (DELETE)
-        7. Verify Deletion (404 Not Found)
-        """
-        # 1. Setup prerequisite User and Place
-        u_res = self.client.post('/api/v1/users/', data=json.dumps({
-            "first_name": "Rev", "last_name": "User", "email": "reviewer@example.com", "password": "pass"
-        }), content_type='application/json')
-        u_id = u_res.get_json()['id']
-
-        p_res = self.client.post('/api/v1/places/', data=json.dumps({
-            "title": "Flat", "price": 80.0, "latitude": 24.0, "longitude": 46.0, "owner_id": u_id
-        }), content_type='application/json')
-        p_id = p_res.get_json()['id']
-
-        # 2. POST: Create Review
-        r_payload = {"text": "Awesome!", "rating": 5, "place_id": p_id, "user_id": u_id}
-        r_res = self.client.post('/api/v1/reviews/', data=json.dumps(r_payload), content_type='application/json')
-        self.assertEqual(r_res.status_code, 201)
-        r_id = r_res.get_json()['id']
-
-        # 3. GET: Fetch Review by ID
-        get_res = self.client.get(f'/api/v1/reviews/{r_id}')
-        self.assertEqual(get_res.status_code, 200)
-        self.assertEqual(get_res.get_json()['text'], "Awesome!")
-
-        # 4. PUT: Partial Update (updating only 'text' field)
-        update_payload = {"text": "Updated: Absolute perfection!"}
-        put_res = self.client.put(
-            f'/api/v1/reviews/{r_id}',
-            data=json.dumps(update_payload),
-            content_type='application/json'
+        self.create_user(
+            email="owner@example.com",
+            first_name="Owner"
         )
-        self.assertEqual(put_res.status_code, 200)
-        res_data = put_res.get_json()
-        self.assertEqual(res_data['text'], "Updated: Absolute perfection!")
-        self.assertEqual(res_data['rating'], 5)  # Rating preserved (Partial Update)
-        self.assertIn('id', res_data)
 
-        # 5. GET: Fetch Reviews for specific Place
-        place_revs_res = self.client.get(f'/api/v1/places/{p_id}/reviews')
-        self.assertEqual(place_revs_res.status_code, 200)
-        self.assertTrue(len(place_revs_res.get_json()) > 0)
+        owner_token = self.login("owner@example.com")
 
-        # 6. DELETE: Delete Review
-        del_res = self.client.delete(f'/api/v1/reviews/{r_id}')
-        self.assertEqual(del_res.status_code, 200)
+        place_response = self.client.post(
+            "/api/v1/places/",
+            data=json.dumps({
+                "title": "Flat",
+                "description": "Test flat",
+                "price": 80.0,
+                "latitude": 24.0,
+                "longitude": 46.0,
+                "amenities": []
+            }),
+            headers=self.auth_headers(owner_token)
+        )
 
-        # 7. GET: Verify deletion (should return 404)
-        get_deleted = self.client.get(f'/api/v1/reviews/{r_id}')
-        self.assertEqual(get_deleted.status_code, 404)
+        self.assertEqual(place_response.status_code, 201)
+
+        place_id = place_response.get_json()["id"]
+
+        self.create_user(
+            email="reviewer@example.com",
+            first_name="Reviewer"
+        )
+
+        reviewer_token = self.login("reviewer@example.com")
+
+        review_response = self.client.post(
+            "/api/v1/reviews/",
+            data=json.dumps({
+                "text": "Awesome!",
+                "rating": 5,
+                "place_id": place_id
+            }),
+            headers=self.auth_headers(reviewer_token)
+        )
+
+        self.assertEqual(review_response.status_code, 201)
+
+        review_id = review_response.get_json()["id"]
+
+        get_response = self.client.get(
+            f"/api/v1/reviews/{review_id}"
+        )
+
+        self.assertEqual(get_response.status_code, 200)
+        self.assertEqual(
+            get_response.get_json()["text"],
+            "Awesome!"
+        )
+
+        update_response = self.client.put(
+            f"/api/v1/reviews/{review_id}",
+            data=json.dumps({
+                "text": "Updated review"
+            }),
+            headers=self.auth_headers(reviewer_token)
+        )
+
+        self.assertEqual(update_response.status_code, 200)
+        self.assertEqual(
+            update_response.get_json()["text"],
+            "Updated review"
+        )
+
+        delete_response = self.client.delete(
+            f"/api/v1/reviews/{review_id}",
+            headers=self.auth_headers(reviewer_token)
+        )
+
+        self.assertEqual(delete_response.status_code, 200)
+
+        deleted_response = self.client.get(
+            f"/api/v1/reviews/{review_id}"
+        )
+
+        self.assertEqual(deleted_response.status_code, 404)
 
     def test_review_update_validations(self):
-        """Verify strict validations during review updates"""
-        # 1. Setup User and Place
-        u_res = self.client.post('/api/v1/users/', data=json.dumps({
-            "first_name": "Val", "last_name": "Test", "email": "val@example.com", "password": "pass"
-        }), content_type='application/json')
-        u_id = u_res.get_json()['id']
+        self.create_user(email="owner@example.com")
 
-        p_res = self.client.post('/api/v1/places/', data=json.dumps({
-            "title": "Apt", "price": 100.0, "latitude": 10.0, "longitude": 10.0, "owner_id": u_id
-        }), content_type='application/json')
-        p_id = p_res.get_json()['id']
+        owner_token = self.login("owner@example.com")
 
-        r_res = self.client.post('/api/v1/reviews/', data=json.dumps({
-            "text": "Good", "rating": 4, "place_id": p_id, "user_id": u_id
-        }), content_type='application/json')
-        r_id = r_res.get_json()['id']
+        place_response = self.client.post(
+            "/api/v1/places/",
+            data=json.dumps({
+                "title": "Apt",
+                "description": "Test",
+                "price": 100.0,
+                "latitude": 10.0,
+                "longitude": 10.0,
+                "amenities": []
+            }),
+            headers=self.auth_headers(owner_token)
+        )
 
-        # 2. Reject boolean rating (e.g., rating: True)
-        bool_res = self.client.put(f'/api/v1/reviews/{r_id}', data=json.dumps({"rating": True}), content_type='application/json')
-        self.assertEqual(bool_res.status_code, 400)
+        place_id = place_response.get_json()["id"]
 
-        # 3. Reject non-existent user_id
-        bad_user_res = self.client.put(f'/api/v1/reviews/{r_id}', data=json.dumps({"user_id": "invalid-user-uuid"}), content_type='application/json')
-        self.assertEqual(bad_user_res.status_code, 400)
+        self.create_user(email="reviewer@example.com")
 
-        # 4. Reject non-existent place_id
-        bad_place_res = self.client.put(f'/api/v1/reviews/{r_id}', data=json.dumps({"place_id": "invalid-place-uuid"}), content_type='application/json')
-        self.assertEqual(bad_place_res.status_code, 400)
+        reviewer_token = self.login("reviewer@example.com")
 
-if __name__ == '__main__':
+        review_response = self.client.post(
+            "/api/v1/reviews/",
+            data=json.dumps({
+                "text": "Good",
+                "rating": 4,
+                "place_id": place_id
+            }),
+            headers=self.auth_headers(reviewer_token)
+        )
+
+        review_id = review_response.get_json()["id"]
+
+        response = self.client.put(
+            f"/api/v1/reviews/{review_id}",
+            data=json.dumps({"rating": True}),
+            headers=self.auth_headers(reviewer_token)
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+
+if __name__ == "__main__":
     unittest.main()

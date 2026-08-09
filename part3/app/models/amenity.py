@@ -1,35 +1,41 @@
+"""Amenity model."""
+
+from sqlalchemy.orm import validates
+
+from app.extensions import db
 from app.models.base import BaseModel
+from app.models.place_amenity import place_amenity
 
 
 class Amenity(BaseModel):
+    """Represent an amenity that can be linked to places."""
+
+    __tablename__ = "amenities"
+
+    name = db.Column(db.String(50), nullable=False, unique=True)
+
+    places = db.relationship(
+        "Place",
+        secondary=place_amenity,
+        back_populates="amenities"
+    )
+
     def __init__(self, name="", **kwargs):
-        super().__init__(**kwargs)
-        self.name = name  # Triggers property setter validation automatically
+        """Initialize an amenity."""
+        super().__init__()
+        self.name = name
 
-    @property
-    def name(self):
-        """Return the amenity name."""
-        return self._name
-
-    @name.setter
-    def name(self, value):
+    @validates("name")
+    def validate_name(self, key, value):
         """Validate and set the amenity name."""
         if not isinstance(value, str) or not value.strip():
-            raise ValueError("Amenity name is required and cannot be empty.")
+            raise ValueError(
+                "Amenity name is required and cannot be empty."
+            )
 
         if len(value) > 50:
-            raise ValueError("Amenity name must not exceed 50 characters.")
+            raise ValueError(
+                "Amenity name must not exceed 50 characters."
+            )
 
-        self._name = value.strip()
-
-    def update(self, data):
-        """Update amenity attributes dynamically using property setters."""
-        for key, value in data.items():
-            if key in ['id', 'created_at', 'updated_at']:
-                continue
-
-            if hasattr(self, key):
-                setattr(self, key, value)  # Triggers @name.setter validation
-
-        if hasattr(super(), 'save'):
-            super().save()
+        return value.strip()
