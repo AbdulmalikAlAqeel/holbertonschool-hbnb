@@ -11,6 +11,8 @@ from app.models.amenity import Amenity
 from app.models.place import Place
 from app.models.review import Review
 from app.models.user import User
+from app.extensions import db
+from app import create_app
 
 
 class TestModels(unittest.TestCase):
@@ -18,10 +20,18 @@ class TestModels(unittest.TestCase):
 
     def setUp(self):
         """Create valid objects for tests."""
+        self.app = create_app("config.TestingConfig")
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+
+        db.drop_all()
+        db.create_all()
+
         self.user = User(
             email="owner@example.com",
-            first_name="Khaled",
-            last_name="Yousef"
+            first_name="Test",
+            last_name="User",
+            password="pass123"
         )
 
         self.place = Place(
@@ -34,6 +44,12 @@ class TestModels(unittest.TestCase):
         )
 
         self.amenity = Amenity("Wi-Fi")
+
+    def tearDown(self):
+        """Clean up the database context after each test."""
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
 
     def test_uuid_is_valid_and_unique(self):
         """Test UUID generation."""
@@ -207,6 +223,14 @@ class TestModels(unittest.TestCase):
 
         self.place.add_amenity(self.amenity)
         self.place.add_review(review)
+
+        db.session.add_all([
+            self.user,
+            self.place,
+            self.amenity,
+            review
+        ])
+        db.session.flush()
 
         self.assertIs(
             self.place.owner,

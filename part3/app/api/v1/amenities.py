@@ -26,7 +26,7 @@ class AmenityList(Resource):
         """Admin Only: Create a new amenity."""
         claims = get_jwt()
         if not claims.get('is_admin', False):
-            return {'error': 'Admin access required'}, 403
+            return {'error': 'Admin privileges required'}, 403
 
         data = api.payload
         try:
@@ -52,7 +52,7 @@ class AmenityResource(Resource):
         """Admin Only: Update an amenity."""
         claims = get_jwt()
         if not claims.get('is_admin', False):
-            return {'error': 'Admin access required'}, 403
+            return {'error': 'Admin privileges required'}, 403
 
         amenity = facade.get_amenity(amenity_id)
         if not amenity:
@@ -70,7 +70,7 @@ class AmenityResource(Resource):
         """Admin Only: Delete an amenity."""
         claims = get_jwt()
         if not claims.get('is_admin', False):
-            return {'error': 'Admin access required'}, 403
+            return {'error': 'Admin privileges required'}, 403
 
         amenity = facade.get_amenity(amenity_id)
         if not amenity:

@@ -137,3 +137,24 @@ class Place(BaseModel):
         if review not in self.reviews:
             self.reviews.append(review)
             self.save()
+
+    def to_dict(self):
+        """Return a dictionary representation of the place."""
+        data = super().to_dict()
+
+        data["owner"] = {
+            "id": self.owner.id,
+            "first_name": self.owner.first_name,
+            "last_name": self.owner.last_name,
+            "email": self.owner.email
+        }
+
+        data["amenities"] = [
+            {
+                "id": amenity.id,
+                "name": amenity.name
+            }
+            for amenity in self.amenities
+        ]
+
+        return data

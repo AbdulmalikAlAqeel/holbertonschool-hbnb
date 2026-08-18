@@ -19,9 +19,6 @@ class HBnBAPITestCase(unittest.TestCase):
         db.drop_all()
         db.create_all()
 
-        facade.amenity_repo._storage.clear()
-        facade.place_repo._storage.clear()
-        facade.review_repo._storage.clear()
 
     def tearDown(self):
         self.app_context.pop()
