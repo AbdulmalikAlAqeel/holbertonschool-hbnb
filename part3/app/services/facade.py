@@ -4,16 +4,18 @@ from app.models.user import User
 from app.models.place import Place
 from app.models.review import Review
 from app.models.amenity import Amenity
-from app.persistence.repository import InMemoryRepository
 from app.persistence.user_repository import UserRepository
+from app.persistence.place_repository import PlaceRepository
+from app.persistence.review_repository import ReviewRepository
+from app.persistence.amenity_repository import AmenityRepository
 
 
 class HBnBFacade:
     def __init__(self):
         self.user_repo = UserRepository()
-        self.place_repo = InMemoryRepository()
-        self.review_repo = InMemoryRepository()
-        self.amenity_repo = InMemoryRepository()
+        self.place_repo = PlaceRepository()
+        self.review_repo = ReviewRepository()
+        self.amenity_repo = AmenityRepository()
 
     # ==================== USER OPERATIONS ====================
     def create_user(self, user_data):
@@ -49,11 +51,7 @@ class HBnBFacade:
         return self.amenity_repo.get_all()
 
     def update_amenity(self, amenity_id, amenity_data):
-        amenity = self.get_amenity(amenity_id)
-        if not amenity:
-            return None
-        amenity.update(amenity_data)
-        return amenity
+        return self.amenity_repo.update(amenity_id, amenity_data)
 
     def delete_amenity(self, amenity_id):
         return self.amenity_repo.delete(amenity_id)
@@ -93,11 +91,7 @@ class HBnBFacade:
         return self.place_repo.get_all()
 
     def update_place(self, place_id, place_data):
-        place = self.get_place(place_id)
-        if not place:
-            return None
-        place.update(place_data)
-        return place
+        return self.place_repo.update(place_id, place_data)
 
     def delete_place(self, place_id):
         return self.place_repo.delete(place_id)
@@ -120,7 +114,6 @@ class HBnBFacade:
         )
 
         self.review_repo.add(review)
-        place.add_review(review)
         return review
 
     def get_review(self, review_id):
@@ -131,16 +124,12 @@ class HBnBFacade:
 
     def get_reviews_by_place(self, place_id):
         return [
-            r for r in self.review_repo.get_all()
-            if r.place_id == place_id
+            review for review in self.review_repo.get_all()
+            if review.place_id == place_id
         ]
 
     def update_review(self, review_id, review_data):
-        review = self.get_review(review_id)
-        if not review:
-            return None
-        review.update(review_data)
-        return review
+        return self.review_repo.update(review_id, review_data)
 
     def delete_review(self, review_id):
         return self.review_repo.delete(review_id)
