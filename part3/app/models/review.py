@@ -28,13 +28,18 @@ class Review(BaseModel):
     place = db.relationship("Place", back_populates="reviews")
     user = db.relationship("User", back_populates="reviews")
 
-    def __init__(self, text, rating, place, user):
-        """Initialize a review."""
-        super().__init__()
+    def __init__(self, text, rating, place_id=None, user_id=None, place=None, user=None, **kwargs):
+        super().__init__(**kwargs)
         self.text = text
         self.rating = rating
-        self.place = place
-        self.user = user
+        
+        
+        self.place_id = place_id or (place.id if place else None)
+        self.user_id = user_id or (user.id if user else None)
+        if place:
+            self.place = place
+        if user:
+            self.user = user
 
     @validates("text")
     def validate_text(self, key, value):

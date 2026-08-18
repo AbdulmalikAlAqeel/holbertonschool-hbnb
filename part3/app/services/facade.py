@@ -1,19 +1,22 @@
 """Facade Service Implementation for HBnB."""
 
-from app.models.user import User
-from app.models.place import Place
-from app.models.review import Review
-from app.models.amenity import Amenity
-from app.persistence.repository import InMemoryRepository
 from app.persistence.user_repository import UserRepository
+from app.persistence.place_repository import PlaceRepository  # Use SQLAlchemy database repository
+from app.persistence.review_repository import ReviewRepository  # Use SQLAlchemy database repository
+from app.persistence.amenity_repository import AmenityRepository
 
 
 class HBnBFacade:
     def __init__(self):
+        """
+        Initialize the facade with database-backed repositories.
+        Using SQLAlchemy repositories ensures proper foreign key (FK) populating
+        and persistent database operations instead of volatile in-memory storage.
+        """
         self.user_repo = UserRepository()
-        self.place_repo = InMemoryRepository()
-        self.review_repo = InMemoryRepository()
-        self.amenity_repo = InMemoryRepository()
+        self.place_repo = PlaceRepository()      # DB storage for places (avoids None owner_id)
+        self.review_repo = ReviewRepository()     # DB storage for reviews (avoids None user_id)
+        self.amenity_repo = AmenityRepository()
 
     # ==================== USER OPERATIONS ====================
     def create_user(self, user_data):
@@ -60,29 +63,18 @@ class HBnBFacade:
 
     # ==================== PLACE OPERATIONS ====================
     def create_place(self, place_data):
-        owner_id = place_data.get('owner_id')
-        owner = self.get_user(owner_id)
-
+        owner = self.user_repo.get(place_data['owner_id'])
         if not owner:
             raise ValueError("Owner not found")
 
-        amenity_ids = place_data.get('amenities', [])
-
         place = Place(
-            title=place_data.get('title'),
-            description=place_data.get('description'),
-            price=place_data.get('price'),
-            latitude=place_data.get('latitude'),
-            longitude=place_data.get('longitude'),
-            owner=owner
+            title=place_data['title'],
+            description=place_data.get('description', ''),
+            price=place_data['price'],
+            latitude=place_data['latitude'],
+            longitude=place_data['longitude'],
+            owner_id=owner.id
         )
-
-        for amenity_id in amenity_ids:
-            amenity = self.get_amenity(amenity_id)
-            if not amenity:
-                raise ValueError("Amenity not found")
-            place.add_amenity(amenity)
-
         self.place_repo.add(place)
         return place
 
@@ -104,23 +96,19 @@ class HBnBFacade:
 
     # ==================== REVIEW OPERATIONS ====================
     def create_review(self, review_data):
-        place = self.get_place(review_data.get('place_id'))
-        if not place:
-            raise ValueError("Place not found")
+        user = self.user_repo.get(review_data['user_id'])
+        place = self.place_repo.get(review_data['place_id'])
 
-        user = self.get_user(review_data.get('user_id'))
-        if not user:
-            raise ValueError("User not found")
+        if not user or not place:
+            raise ValueError("User or Place not found")
 
         review = Review(
-            text=review_data.get('text'),
-            rating=review_data.get('rating'),
-            place=place,
-            user=user
+            text=review_data['text'],
+            rating=review_data['rating'],
+            user_id=user.id,
+            place_id=place.id
         )
-
         self.review_repo.add(review)
-        place.add_review(review)
         return review
 
     def get_review(self, review_id):

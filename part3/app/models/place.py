@@ -37,23 +37,19 @@ class Place(BaseModel):
         back_populates="places"
     )
 
-    def __init__(
-        self,
-        title,
-        description,
-        price,
-        latitude,
-        longitude,
-        owner
-    ):
-        """Initialize a place."""
-        super().__init__()
+    def __init__(self, title, price, latitude, longitude, owner_id=None, owner=None, **kwargs):
+        super().__init__(**kwargs)
         self.title = title
-        self.description = description
         self.price = price
         self.latitude = latitude
         self.longitude = longitude
-        self.owner = owner
+        
+        
+        if owner_id:
+            self.owner_id = owner_id
+        elif owner:
+            self.owner_id = owner.id
+            self.owner = owner
 
     @validates("title")
     def validate_title(self, key, value):

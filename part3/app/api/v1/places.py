@@ -65,16 +65,26 @@ class PlaceResource(Resource):
     @api.expect(place_update_model)
     def put(self, place_id):
         """Protected: Update place details (Only place owner or administrator)."""
-        current_user_id = get_jwt_identity()
+        identity = get_jwt_identity()
         claims = get_jwt()
-        is_admin = claims.get('is_admin', False)
+
+        
+        if isinstance(identity, dict):
+            current_user_id = identity.get('id')
+            is_admin = identity.get('is_admin', claims.get('is_admin', False))
+        else:
+            current_user_id = identity
+            is_admin = claims.get('is_admin', False)
 
         place = facade.get_place(place_id)
         if not place:
             return {'error': 'Place not found'}, 404
 
-        # Validate ownership: strict access control unless current user is the owner or an admin
-        if place.owner_id != current_user_id and not is_admin:
+        
+        owner_id = getattr(place, 'owner_id', None) or (place.owner.id if getattr(place, 'owner', None) else None)
+
+    
+        if str(owner_id) != str(current_user_id) and not is_admin:
             return {'error': 'Unauthorized action'}, 403
 
         data = api.payload

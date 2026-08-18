@@ -30,32 +30,41 @@ class ReviewList(Resource):
     @jwt_required()
     @api.expect(review_model, validate=True)
     def post(self):
-        """Protected: Create a new review with ownership & duplicate checks."""
-        current_user_id = get_jwt_identity()
+        current_user = get_jwt_identity()
+        current_user_id = current_user['id']
         data = api.payload
-        place_id = data.get('place_id')
 
-        # 1. Check if the target place exists
-        place = facade.get_place(place_id)
+        place = facade.get_place(data.get('place_id'))
         if not place:
             return {'error': 'Place not found'}, 404
 
-        # 2. Constraint: Users cannot review their own places
-        if place.owner_id == current_user_id:
+        
+        place_owner_id = getattr(place, 'owner_id', None) or (place.owner.id if getattr(place, 'owner', None) else None)
+
+        
+        if place_owner_id == current_user_id:
             return {'error': 'You cannot review your own place'}, 400
 
-        # 3. Constraint: Users cannot submit multiple reviews for the same place
-        existing_reviews = facade.get_reviews_by_place(place_id)
+        
+        existing_reviews = facade.get_reviews_by_place(place.id) if hasattr(facade, 'get_reviews_by_place') else facade.get_all_reviews()
+
+        
         for rev in existing_reviews:
-            if rev.user_id == current_user_id:
+            rev_place_id = getattr(rev, 'place_id', None) or (rev.place.id if getattr(rev, 'place', None) else None)
+            rev_user_id = getattr(rev, 'user_id', None) or (rev.user.id if getattr(rev, 'user', None) else None)
+
+            if str(rev_place_id) == str(place.id) and str(rev_user_id) == str(current_user_id):
                 return {'error': 'You have already reviewed this place'}, 400
 
-        data['user_id'] = current_user_id
-        try:
-            new_review = facade.create_review(data)
-            return new_review.to_dict(), 201
-        except ValueError as e:
-            return {'error': str(e)}, 400
+        
+        review_data = {
+            'text': data['text'],
+            'rating': data['rating'],
+            'place_id': place.id,
+            'user_id': current_user_id
+        }
+        new_review = facade.create_review(review_data)
+        return new_review, 201
 
 
 @api.route('/<review_id>')
@@ -72,16 +81,26 @@ class ReviewResource(Resource):
     @api.expect(review_update_model)
     def put(self, review_id):
         """Protected: Update a review (Only the author or admin can update)."""
-        current_user_id = get_jwt_identity()
+        identity = get_jwt_identity()
         claims = get_jwt()
-        is_admin = claims.get('is_admin', False)
+
+        
+        if isinstance(identity, dict):
+            current_user_id = identity.get('id')
+            is_admin = identity.get('is_admin', claims.get('is_admin', False))
+        else:
+            current_user_id = identity
+            is_admin = claims.get('is_admin', False)
 
         review = facade.get_review(review_id)
         if not review:
             return {'error': 'Review not found'}, 404
 
-        # Validate ownership: only the review author or administrator is allowed
-        if review.user_id != current_user_id and not is_admin:
+        
+        author_id = getattr(review, 'user_id', None) or (review.user.id if getattr(review, 'user', None) else None)
+
+        
+        if str(author_id) != str(current_user_id) and not is_admin:
             return {'error': 'Unauthorized action'}, 403
 
         data = api.payload
