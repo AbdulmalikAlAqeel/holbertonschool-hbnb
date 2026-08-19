@@ -3,7 +3,7 @@
 from flask import Flask
 from flask_restx import Api
 from flask_jwt_extended import JWTManager
-
+from flask_cors import CORS
 from app.extensions import bcrypt, db
 from app.services.facade import HBnBFacade
 
@@ -17,7 +17,7 @@ jwt = JWTManager()
 def create_app(config_class="config.DevelopmentConfig"):
     """Create and configure the Flask application."""
     app = Flask(__name__)
-    
+    CORS(app)
     # Load configuration settings from the specified config object/string
     app.config.from_object(config_class)
 
