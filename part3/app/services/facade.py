@@ -1,10 +1,5 @@
 """Facade Service Implementation for HBnB."""
 
-<<<<<<< HEAD
-from app.persistence.user_repository import UserRepository
-from app.persistence.place_repository import PlaceRepository  # Use SQLAlchemy database repository
-from app.persistence.review_repository import ReviewRepository  # Use SQLAlchemy database repository
-=======
 from app.models.user import User
 from app.models.place import Place
 from app.models.review import Review
@@ -12,7 +7,6 @@ from app.models.amenity import Amenity
 from app.persistence.user_repository import UserRepository
 from app.persistence.place_repository import PlaceRepository
 from app.persistence.review_repository import ReviewRepository
->>>>>>> 37c1abcd958f7b19b26d0d043133305e3f82031c
 from app.persistence.amenity_repository import AmenityRepository
 
 
@@ -24,13 +18,8 @@ class HBnBFacade:
         and persistent database operations instead of volatile in-memory storage.
         """
         self.user_repo = UserRepository()
-<<<<<<< HEAD
-        self.place_repo = PlaceRepository()      # DB storage for places (avoids None owner_id)
-        self.review_repo = ReviewRepository()     # DB storage for reviews (avoids None user_id)
-=======
         self.place_repo = PlaceRepository()
         self.review_repo = ReviewRepository()
->>>>>>> 37c1abcd958f7b19b26d0d043133305e3f82031c
         self.amenity_repo = AmenityRepository()
 
     # ==================== USER OPERATIONS ====================

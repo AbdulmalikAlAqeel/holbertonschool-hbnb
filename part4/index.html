@@ -12,36 +12,31 @@
             <a href="index.html">
                 <img src="images/logo.png" alt="HBnB Logo" class="logo">
             </a>
-            <a href="login.html" class="login-button">Login</a>
+            <a href="login.html" id="login-link" class="login-button">Login</a>
         </nav>
     </header>
 
     <main>
         <h1>Available Places</h1>
 
-        <section class="places-list">
-            <article class="place-card">
-                <h2>Beautiful Beach House</h2>
-                <p>Price per night: $150</p>
-                <a href="place.html" class="details-button">View Details</a>
-            </article>
+        <section class="filter-section">
+            <label for="price-filter">Max Price:</label>
+            <select id="price-filter">
+                <option value="10">10</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="all" selected>All</option>
+            </select>
+        </section>
 
-            <article class="place-card">
-                <h2>Cozy City Apartment</h2>
-                <p>Price per night: $100</p>
-                <a href="place.html" class="details-button">View Details</a>
-            </article>
-
-            <article class="place-card">
-                <h2>Mountain Cabin</h2>
-                <p>Price per night: $200</p>
-                <a href="place.html" class="details-button">View Details</a>
-            </article>
+        <section id="places-list" class="places-list">
         </section>
     </main>
 
     <footer>
         <p>&copy; 2026 HBnB. All rights reserved.</p>
     </footer>
+
+    <script src="scripts.js"></script>
 </body>
 </html>
