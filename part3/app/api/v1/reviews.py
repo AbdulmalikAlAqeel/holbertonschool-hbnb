@@ -31,7 +31,12 @@ class ReviewList(Resource):
     @api.expect(review_model, validate=True)
     def post(self):
         current_user = get_jwt_identity()
-        current_user_id = current_user['id']
+
+        if isinstance(current_user, dict):
+            current_user_id = current_user.get('id')
+        else:
+            current_user_id = current_user
+
         data = api.payload
 
         place = facade.get_place(data.get('place_id'))
@@ -64,7 +69,7 @@ class ReviewList(Resource):
             'user_id': current_user_id
         }
         new_review = facade.create_review(review_data)
-        return new_review, 201
+        return new_review.to_dict(), 201
 
 
 @api.route('/<review_id>')

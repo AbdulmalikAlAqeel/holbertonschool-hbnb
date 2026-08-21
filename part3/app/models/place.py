@@ -166,4 +166,18 @@ class Place(BaseModel):
             for amenity in self.amenities
         ]
 
+        data["reviews"] = [
+            {
+                "id": review.id,
+                "text": review.text,
+                "rating": review.rating,
+                "user": {
+                    "id": review.user.id,
+                    "first_name": review.user.first_name,
+                    "last_name": review.user.last_name
+                }
+            }
+            for review in self.reviews
+        ]
+
         return data
